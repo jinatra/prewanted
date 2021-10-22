@@ -27,7 +27,14 @@ class BoardCreateView(View):
             )
             board.save()
 
-            return JsonResponse({'MESSAGE':'board created'}, status=201)
+            board_info = {
+                'title'         : board.title,
+                'content'       : board.content,
+                'user_id'       : board.user.id,
+                'user_nickname' : board.user.nickname
+            }
+
+            return JsonResponse({'MESSAGE':board_info}, status=201)
 
         except KeyError:
             return JsonResponse({'MESSAGE':'KEY_ERROR'}, status=400)
