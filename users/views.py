@@ -7,7 +7,7 @@ from django.views     import View
 from django.http      import JsonResponse
 
 from users.models import User
-from users.regex  import email_validator, password_validator
+from users.regex  import email_validator, password_validator, nickname_validator
 from my_settings  import SECRET_KEY, ALGORITHM
 
 class SignUpView(View):
@@ -24,13 +24,16 @@ class SignUpView(View):
             if not password_validator.match(password):
                 return JsonResponse({'MESSAGE':'wrong password form'}, status=400)
 
+            if not nickname_validator.match(nickname):
+                return JsonResponse({'MESSAGE':'wrong nickname form'}, status=400)
+
             if User.objects.filter(email = email).exists():
                     return JsonResponse({'MESSAGE':'existing e-mail'}, status = 409)
             
             if User.objects.filter(nickname = nickname).exists():
                     return JsonResponse({'MESSAGE':'existing nickname'}, status = 409)
 
-            decoded_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt().decode('utf-8'))
+            decoded_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
             User.objects.create(
                 email    = email,
