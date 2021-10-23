@@ -18,7 +18,7 @@ class BoardCreateView(View):
             user    = request.user
 
             if len(title) == 0 or len(content) == 0:
-                return JsonResponse({'MESSAGE':'please fill in both title and content'})
+                return JsonResponse({'MESSAGE':'please fill in both title and content'}, status=400)
 
             board = Board(
                 title   = title,
@@ -47,7 +47,7 @@ class BoardListView(View):
     def get(self, request):
         try:
             OFFSET = request.GET.get('offset', 0)
-            LIMIT  = request.GET.get('limit', 10)
+            LIMIT  = request.GET.get('limit', 1)
 
             boards = Board.objects.all()[OFFSET:LIMIT]
 
@@ -55,10 +55,11 @@ class BoardListView(View):
                 'count' : boards.count(),
                 'data'  : [
                     {
-                    'title'     : board.title,
-                    'content'   : board.content,
-                    'user'      : board.user,
-                    'created_at' : board.create_at
+                    'title'         : board.title,
+                    'content'       : board.content,
+                    'user_id'       : board.user.id,
+                    'user_nickname' : board.user.nickname,
+                    'created_at'    : board.created_at.strftime('%Y-%m-%d %H:%M:%S')
                     } for board in boards
                 ]
             }
@@ -72,17 +73,17 @@ class BoardListView(View):
 class BoardReadView(View):
     def get(self, request, board_id):
         try:
-            board = Board.objects.filter(id=board_id)
+            if not Board.objects.filter(id=board_id).exists():
+                return JsonResponse({'MESSAGE':'non-existing board'}, status=404)
 
-            if not board.exists():
-                return JsonResponse({'MESSAGE':'non-existing board'}, status=400)
+            board = Board.objects.get(id=board_id)
 
             board_info = {
-                'title'         : board.info,
+                'title'         : board.title,
                 'content'       : board.content,
                 'user_id'       : board.user.id,
                 'user_nickname' : board.user.nickname,
-                'created_at'    : board.create_at,
+                'created_at'    : board.created_at.strftime('%Y-%m-%d %H:%M:%S'),
             }
 
             return JsonResponse({'MESSAGE':board_info}, status=200)
@@ -96,27 +97,25 @@ class BoardReadView(View):
 
 class BoardUpdateView(View):
     @login_decorator
-    def put(self, request):
+    def post(self, request, board_id):
         try:
             data        = json.loads(request.body)
-            board_id    = data['board_id']
             new_title   = data['new_title']
             new_content = data['new_content']
 
-            board = Board.objects.filter(id=board_id)
+            if not Board.objects.filter(id=board_id).exists():
+                return JsonResponse({'MESSAGE':'non-existing board'}, status=404)
 
-            if not board.exists():
-                return JsonResponse({'MESSAGE':'non-existing board'}, status=400)
+            if len(new_title) == 0 or len(new_content) == 0:
+                return JsonResponse({'MESSAGE':'please fill in both title and content'}, status=400)
 
-            if not len(new_title) == 0 or len(new_content) == 0:
-                return JsonResponse({'MESSAGE':'Please fill in both title and content'})
+            board = Board.objects.get(id=board_id)
 
-            board.update(
-                title = new_title,
-                content = new_content,
-            )
+            board.title   = new_title
+            board.content = new_content
+            board.save()
 
-            update_time = Board.objects.get(id=board_id).updated_at
+            update_time = board.updated_at.strftime('%Y-%m-%d %H:%M:%S')
 
             return JsonResponse({'MESSAGE':'board edited', 'UPDATE_TIME':update_time}, status=200)
 
@@ -134,17 +133,17 @@ class BoardDeleteView(View):
             board = Board.objects.filter(id=board_id)
 
             if not board.exists():
-                return JsonResponse({'MESSAGE':'non-existing board'}, status=204)
+                return JsonResponse({'MESSAGE':'board-not-exists'}, status=404)
 
             if not Board.objects.get(id=board_id).user.id == request.user.id:
-                return JsonResponse({'MESSAGE':'wrong user'}, status=204)
+                return JsonResponse({'MESSAGE':'wrong user'}, status=404)
 
             board.delete()
 
             return JsonResponse({'MESSAGE':'board deleted'}, status=200)
 
         except KeyError:
-            return JsonResponse({'MESSAGE':'KEY_ERROR'}, status=204)
+            return JsonResponse({'MESSAGE':'KEY_ERROR'}, status=400)
 
         except ValueError:
-            return JsonResponse({'MESSAGE':'VALUE_ERROR'}, status=204)
+            return JsonResponse({'MESSAGE':'VALUE_ERROR'}, status=400)
