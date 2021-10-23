@@ -46,8 +46,11 @@ class BoardCreateView(View):
 class BoardListView(View):
     def get(self, request):
         try:
-            OFFSET = request.GET.get('offset', 0)
-            LIMIT  = request.GET.get('limit', 1)
+            OFFSET = int(request.GET.get('offset', 0))
+            LIMIT  = int(request.GET.get('limit', 3))
+
+            if OFFSET < 0 or LIMIT < 0:
+                return JsonResponse({'MESSAGE':'please request positive number'}, status=404) 
 
             boards = Board.objects.all()[OFFSET:LIMIT]
 
@@ -105,6 +108,9 @@ class BoardUpdateView(View):
 
             if not Board.objects.filter(id=board_id).exists():
                 return JsonResponse({'MESSAGE':'non-existing board'}, status=404)
+
+            if not Board.objects.get(id=board_id).user.id == request.user.id:
+                return JsonResponse({'MESSAGE':'wrong user'}, status=404)
 
             if len(new_title) == 0 or len(new_content) == 0:
                 return JsonResponse({'MESSAGE':'please fill in both title and content'}, status=400)

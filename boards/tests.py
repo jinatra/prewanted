@@ -109,7 +109,7 @@ class BoardListViewTest(TestCase):
     def test_board_list_get_success(self):
         client = Client()
 
-        response = client.get('/boards/list?OFFSET=0&LIMIT=1')
+        response = client.get('/boards/list?offset=0&limit=1')
         testtime = datetime.datetime.now()
 
         with mock.patch('django.utils.timezone.now') as mock_now:
@@ -128,6 +128,14 @@ class BoardListViewTest(TestCase):
                 }
             ]
         }})
+
+    def test_board_list_get_query_negative_error(self):
+        client = Client()
+
+        response = client.get('/boards/list?offset=0&limit=-2')
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json(), {'MESSAGE' : 'please return positive number'})
 
     def tearDown(self):
         Board.objects.all().delete()
@@ -188,8 +196,8 @@ class BoardUpdateViewTest(TestCase):
         headers = {"HTTP_Authorization": token}   
 
         data = {
-            'new_title'   : 'new test title',
-            'new_content' : 'new test content',
+            'new_title'   : 'new test title 1',
+            'new_content' : 'new test content 1',
         }
 
         response = client.post('/boards/update/1', json.dumps(data), content_type = 'application/json', **headers)
